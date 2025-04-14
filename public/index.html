@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-LLM Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* gray-500 */
+        }
+        /* Basic body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none; /* Prevent bounce effect on scroll */
+        }
+        /* Style for chat messages */
+        .chat-message {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex h-screen antialiased">
+
+    <aside class="w-64 bg-gray-800 p-4 flex flex-col border-r border-gray-700">
+        <h1 class="text-xl font-semibold mb-6 text-white">LLM Models</h1>
+        <nav class="flex-grow" id="model-list">
+            <button data-model="Gemini" class="model-button w-full text-left px-4 py-2 mb-2 rounded-lg bg-gray-700 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-600 transition duration-150 ease-in-out">
+                Gemini
+            </button>
+            <button data-model="ChatGPT" class="model-button w-full text-left px-4 py-2 mb-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:bg-gray-600 transition duration-150 ease-in-out">
+                ChatGPT
+            </button>
+            <button data-model="Claude" class="model-button w-full text-left px-4 py-2 mb-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:bg-gray-600 transition duration-150 ease-in-out">
+                Claude
+            </button>
+            <button data-model="Llama" class="model-button w-full text-left px-4 py-2 mb-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:bg-gray-600 transition duration-150 ease-in-out">
+                Llama
+            </button>
+            </nav>
+        <div class="mt-auto text-xs text-gray-500">
+            <p>&copy; 2025 Chat Interface</p>
+            <p>Note: LLM responses are simulated.</p>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen">
+        <header class="bg-gray-800 p-4 border-b border-gray-700 shadow-sm">
+            <h2 id="chat-header" class="text-lg font-semibold text-white">Chat with Gemini</h2>
+        </header>
+
+        <div id="chat-output" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-900">
+            <div class="chat-message flex">
+                <div class="bg-gray-700 rounded-lg p-3 max-w-lg">
+                    <p class="text-sm">Welcome! Select a model from the left and start chatting.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="bg-gray-800 p-4 border-t border-gray-700">
+            <div class="flex items-center space-x-3">
+                <input type="text" id="message-input" placeholder="Type your message here..." class="flex-1 px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-100 placeholder-gray-400">
+                <button id="send-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                      <path d="M3.105 3.105a1.5 1.5 0 012.121-.001l11.06 11.06a1.5 1.5 0 01-2.12 2.121l-11.06-11.06a1.5 1.5 0 01-.001-2.121zm2.121.001l11.06 11.06a1.5 1.5 0 01-2.12 2.121L3.105 5.227a1.5 1.5 0 012.121-.001z" />
+                      <path d="M16.95 3.05a1.5 1.5 0 00-2.121 0L3.05 14.828a1.5 1.5 0 002.121 2.122L16.95 5.172a1.5 1.5 0 000-2.122z" />
+                    </svg>
+                </button>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        // --- DOM Elements ---
+        const modelList = document.getElementById('model-list');
+        const chatHeader = document.getElementById('chat-header');
+        const chatOutput = document.getElementById('chat-output');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const modelButtons = document.querySelectorAll('.model-button');
+
+        // --- State ---
+        let currentModel = 'Gemini'; // Default model
+        let conversationHistory = {}; // Store history per model { modelName: [{sender: 'user'/'llm', text: '...'}] }
+
+        // --- Initialization ---
+        initializeChat();
+
+        // --- Event Listeners ---
+        modelList.addEventListener('click', handleModelSelection);
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { // Send on Enter, allow Shift+Enter for newline
+                e.preventDefault(); // Prevent default Enter behavior (newline)
+                sendMessage();
+            }
+        });
+
+        // --- Functions ---
+
+        /**
+         * Initializes the chat interface, sets the default model, and loads its history.
+         */
+        function initializeChat() {
+            // Initialize history for each model
+            modelButtons.forEach(button => {
+                const modelName = button.dataset.model;
+                if (!conversationHistory[modelName]) {
+                    conversationHistory[modelName] = [];
+                }
+            });
+            updateChatUI(); // Load default model's chat
+            messageInput.focus(); // Focus input on load
+        }
+
+        /**
+         * Handles clicking on a model button in the sidebar.
+         * @param {Event} event - The click event object.
+         */
+        function handleModelSelection(event) {
+            const button = event.target.closest('.model-button');
+            if (!button) return; // Exit if click wasn't on a button
+
+            const selectedModel = button.dataset.model;
+            if (selectedModel === currentModel) return; // Do nothing if the same model is clicked
+
+            currentModel = selectedModel;
+            updateChatUI();
+            updateActiveButtonStyles();
+            messageInput.focus();
+        }
+
+        /**
+         * Updates the chat header and loads the conversation history for the current model.
+         */
+        function updateChatUI() {
+            chatHeader.textContent = `Chat with ${currentModel}`;
+            chatOutput.innerHTML = ''; // Clear previous messages
+
+            // Add a default welcome message if history is empty
+            if (conversationHistory[currentModel].length === 0) {
+                 addMessageToChat('llm', `Hello! You are now chatting with ${currentModel}. How can I help you today? (Simulated response)`);
+            } else {
+                // Load history for the selected model
+                conversationHistory[currentModel].forEach(message => {
+                    addMessageToChat(message.sender, message.text, false); // Don't animate history
+                });
+            }
+            scrollToBottom();
+        }
+
+        /**
+         * Updates the visual styling of the model buttons to show which one is active.
+         */
+        function updateActiveButtonStyles() {
+            modelButtons.forEach(btn => {
+                if (btn.dataset.model === currentModel) {
+                    btn.classList.remove('hover:bg-gray-600', 'focus:bg-gray-600');
+                    btn.classList.add('bg-blue-600', 'text-white');
+                } else {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('hover:bg-gray-600', 'focus:bg-gray-600');
+                }
+            });
+        }
+
+        /**
+         * Sends the user's message, displays it, and simulates an LLM response.
+         */
+        function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (!messageText) return; // Don't send empty messages
+
+            // Add user message to chat and history
+            addMessageToChat('user', messageText);
+            if (!conversationHistory[currentModel]) {
+                conversationHistory[currentModel] = [];
+            }
+            conversationHistory[currentModel].push({ sender: 'user', text: messageText });
+
+            messageInput.value = ''; // Clear input field
+            messageInput.focus();
+            sendButton.disabled = true; // Disable button while waiting for response
+
+            // Simulate LLM response after a short delay
+            simulateLLMResponse(messageText);
+        }
+
+        /**
+         * Simulates a response from the currently selected LLM.
+         * @param {string} userMessage - The message the user sent.
+         */
+        function simulateLLMResponse(userMessage) {
+            const thinkingTime = 500 + Math.random() * 1000; // Simulate thinking time (0.5 - 1.5 seconds)
+            let responseText = `This is a simulated response from ${currentModel}.`;
+
+            // Basic response variations based on model (just for demo)
+            switch (currentModel) {
+                case 'Gemini':
+                    responseText += ` You asked about: "${userMessage.substring(0, 30)}...". I'm designed to be helpful and informative.`;
+                    break;
+                case 'ChatGPT':
+                    responseText += ` Regarding your message: "${userMessage.substring(0, 30)}...". I can generate creative text formats.`;
+                    break;
+                case 'Claude':
+                    responseText += ` Thinking about: "${userMessage.substring(0, 30)}...". My focus is on safety and helpfulness.`;
+                    break;
+                case 'Llama':
+                     responseText += ` Processing: "${userMessage.substring(0, 30)}...". I'm an open-source model.`;
+                    break;
+                default:
+                    responseText += ` I received your message: "${userMessage.substring(0, 30)}...".`;
+            }
+
+            setTimeout(() => {
+                // Add LLM response to chat and history
+                addMessageToChat('llm', responseText);
+                 if (!conversationHistory[currentModel]) {
+                    conversationHistory[currentModel] = [];
+                }
+                conversationHistory[currentModel].push({ sender: 'llm', text: responseText });
+                sendButton.disabled = false; // Re-enable send button
+                messageInput.focus();
+            }, thinkingTime);
+        }
+
+        /**
+         * Adds a message bubble to the chat output area.
+         * @param {string} sender - 'user' or 'llm'.
+         * @param {string} text - The message content.
+         * @param {boolean} animate - Whether to apply the fade-in animation.
+         */
+        function addMessageToChat(sender, text, animate = true) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('flex');
+            if (animate) {
+                messageElement.classList.add('chat-message'); // Add class for animation
+            }
+
+            const bubble = document.createElement('div');
+            bubble.classList.add('rounded-lg', 'p-3', 'max-w-lg', 'text-sm');
+
+            // Basic Markdown support (bold, italics) - could be expanded
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');       // Italics
+            bubble.innerHTML = text.replace(/\n/g, '<br>'); // Handle newlines
+
+            if (sender === 'user') {
+                messageElement.classList.add('justify-end'); // Align user messages to the right
+                bubble.classList.add('bg-blue-600', 'text-white');
+            } else {
+                messageElement.classList.add('justify-start'); // Align LLM messages to the left
+                bubble.classList.add('bg-gray-700', 'text-gray-100');
+            }
+
+            messageElement.appendChild(bubble);
+            chatOutput.appendChild(messageElement);
+            scrollToBottom(); // Scroll down after adding message
+        }
+
+        /**
+         * Scrolls the chat output area to the bottom.
+         */
+        function scrollToBottom() {
+            // Use setTimeout to ensure scrolling happens after the element is rendered
+            setTimeout(() => {
+                chatOutput.scrollTop = chatOutput.scrollHeight;
+            }, 0);
+        }
+
+    </script>
+
+</body>
+</html>

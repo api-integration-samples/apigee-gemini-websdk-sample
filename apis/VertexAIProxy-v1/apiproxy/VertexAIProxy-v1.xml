@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="13" name="VertexAIProxy-v1">
+  <DisplayName/>
+  <Description/>
+  <CreatedAt>1744724512176</CreatedAt>
+  <LastModifiedAt>1744724512176</LastModifiedAt>
+  <BasePaths>/v1/vertexai</BasePaths>
+  <Policies>
+    <Policy>SC-ModelArmor</Policy>
+    <Policy>EV-GetInputs</Policy>
+    <Policy>JS-SetMaskedInput</Policy>
+  </Policies>
+  <ProxyEndpoints>
+    <ProxyEndpoint>default</ProxyEndpoint>
+  </ProxyEndpoints>
+  <Resources>
+    <Resource>jsc://ModelArmorSanitize.js</Resource>
+  </Resources>
+  <TargetEndpoints>
+    <TargetEndpoint>default</TargetEndpoint>
+  </TargetEndpoints>
+</APIProxy>

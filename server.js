@@ -1,20 +1,39 @@
-// src/index.ts
-const express = require('express');
+import express from 'express';
+import {GoogleGenAI} from '@google/genai';
+
 const app = express();
+const port = process.env.PORT || 8080;
+
+// static hosting
+app.use(express.static('public'))
+
 // json middleware
 app.use(express.json());
-app.use(express.static('public'));
-const port = 8080;
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
+// create google gen ai object
+const ai = new GoogleGenAI({
+  vertexai: true,
+  project: process.env.PROJECT_ID,
+  location: process.env.REGION,
+  httpOptions: {
+    baseUrl: process.env.APIGEE_ENDPOINT + "/v1/vertexai",
+    headers: {
+      "EnableModelArmor": "true"
+    }
+  }
 });
 
-app.post('/', function(request, response){
-  console.log(request.body);      // your JSON
-  response.send(request.body);    // echo the result back
+app.post('/chat', async function(request, response){
+  const geminiResponse = await ai.models.generateContent({
+    model: 'gemini-2.0-flash-001',
+    contents: request.body.prompt,
+  });
+  let responseBody = request.body;
+  responseBody.response = geminiResponse.text;
+
+  response.send(responseBody);
 });
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`ChatLLM app listening on port ${port}`)
 });

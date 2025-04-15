@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ServiceCallout continueOnError="false" enabled="true" name="SC-ModelArmor">
+  <DisplayName>SC-ModelArmor</DisplayName>
+  <Properties/>
+  <Request clearPayload="true" variable="myRequest">
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+    <Set>
+      <Verb>POST</Verb>
+      <Payload contentType="application/json">
+        {
+          "user_prompt_data": {
+            "text": "{genai.prompt}"
+          }
+        }
+      </Payload>
+    </Set>
+  </Request>
+  <Response>maResponse</Response>
+  <HTTPTargetConnection>
+    <Properties/>
+    <URL>https://modelarmor.europe-west4.rep.googleapis.com/v1/projects/{organization.name}/locations/europe-west4/templates/ma-template1:sanitizeUserPrompt</URL>
+    <Authentication>
+      <GoogleAccessToken>
+        <Scopes>
+          <Scope>https://www.googleapis.com/auth/cloud-platform</Scope>
+        </Scopes>
+      </GoogleAccessToken>
+    </Authentication>
+  </HTTPTargetConnection>
+</ServiceCallout>

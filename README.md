@@ -16,9 +16,10 @@ If you trace the Apigee proxy, you can see the masked prompts in the debug windo
 ## Deployment
 ```sh
 # first, set your GCP project ID and region
-PROJECT_ID=apigee-tlab7
+PROJECT_ID=apigee-hub-demo
 REGION=europe-west4 # currently Model Armor supports europe-west4 in the EU
-APIGEE_ENDPOINT=https://$(apigeecli envgroups list -o $PROJECT_ID | jq --raw-output '.environmentGroups[0].hostnames[0]')
+APIGEE_HOST=$(apigeecli envgroups list -o $PROJECT_ID -t $(gcloud auth print-access-token) | jq --raw-output '.environmentGroups[0].hostnames[0]')
+APIGEE_ENDPOINT="https://$APIGEE_HOST"
 APIGEE_ENV=dev
 
 # enable the model armor and data loss prevention GCP services
@@ -131,9 +132,9 @@ curl -X POST "https://dlp.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGI
 EOF
 
 # create model armor template with sdp templates for de-identification and masking
-INSPECTION_TEMPLATE_ID=projects/apigee-tlab7/locations/$REGION/inspectTemplates/ma-template1
-DEID_TEMPLATE_ID=projects/apigee-tlab7/locations/$REGION/deidentifyTemplates/ma-template1
-gcloud model-armor templates create --location $REGION ma-template1 \
+INSPECTION_TEMPLATE_ID=projects/$PROJECT_ID/locations/$REGION/inspectTemplates/ma-template1
+DEID_TEMPLATE_ID=projects/$PROJECT_ID/locations/$REGION/deidentifyTemplates/ma-template1
+gcloud model-armor templates create --project $PROJECT_ID --location $REGION ma-template1 \
   --rai-settings-filters='[{ "filterType": "HATE_SPEECH", "confidenceLevel": "MEDIUM_AND_ABOVE" },{ "filterType": "HARASSMENT", "confidenceLevel": "MEDIUM_AND_ABOVE" },{ "filterType": "SEXUALLY_EXPLICIT", "confidenceLevel": "MEDIUM_AND_ABOVE" }]' \
   --advanced-config-inspect-template="$INSPECTION_TEMPLATE_ID" \
   --advanced-config-deidentify-template="$DEID_TEMPLATE_ID" \
@@ -150,7 +151,7 @@ gcloud model-armor templates create --location $REGION ma-template1 \
 
 # deploy apigee proxy
 cd ./apis/VertexAIProxy-v1
-apigeecli apis create bundle -f apiproxy --name VertexAIProxy-v1 -o $PROJECT_ID -e $APIGEE_ENV -sa genai-service@$PROJECT_ID.iam.gserviceaccount.com --ovr -t $(gcloud auth print-access-token)
+apigeecli apis create bundle -f apiproxy --name VertexAIProxy-v1 -o $PROJECT_ID -e $APIGEE_ENV -s "genai-service@$PROJECT_ID.iam.gserviceaccount.com" --ovr -t $(gcloud auth print-access-token)
 cd ../..
 ```
 
